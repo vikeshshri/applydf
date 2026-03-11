@@ -1,0 +1,62 @@
+name: AWS Infra Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      ensure_ecr:
+        description: "Create ECR repositories if missing"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+  ECR_REPOSITORY_BACKEND: ${{ vars.ECR_REPOSITORY_BACKEND }}
+  ECR_REPOSITORY_FRONTEND: ${{ vars.ECR_REPOSITORY_FRONTEND }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: github-actions-applydf-infra
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate required variables
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$AWS_REGION"
+          test -n "$AWS_DEPLOY_ROLE_ARN"
+          test -n "$ECR_REPOSITORY_BACKEND"
+          test -n "$ECR_REPOSITORY_FRONTEND"
+
+      - name: Ensure ECR repositories exist
+        if: ${{ inputs.ensure_ecr == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY_BACKEND" >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name "$ECR_REPOSITORY_BACKEND" >/dev/null
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY_FRONTEND" >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name "$ECR_REPOSITORY_FRONTEND" >/dev/null
+          echo "ECR repositories are ready."
+
+      - name: Print next-step checklist
+        shell: bash
+        run: |
+          echo "Infra bootstrap completed."
+          echo "Next: run AWS Deploy ApplyDF workflow (push to main or workflow_dispatch)."
+          echo "Required secrets now only: EC2_HOST, EC2_USER, EC2_SSH_PRIVATE_KEY"

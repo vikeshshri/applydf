@@ -2,6 +2,7 @@ AWS deployment pipeline setup (GitHub Actions -> ECR -> EC2)
 
 Files added:
 - .github/workflows/aws-deploy.yml
+- .github/workflows/aws-infra-bootstrap.yml
 - backend/Dockerfile
 - frontend/Dockerfile
 - deploy/docker-compose.aws.yml
@@ -9,17 +10,21 @@ Files added:
 
 GitHub repository variables (Settings -> Secrets and variables -> Actions -> Variables):
 - AWS_REGION: your region (example: ap-south-1)
+- AWS_DEPLOY_ROLE_ARN: IAM Role ARN for GitHub OIDC (example: arn:aws:iam::<account-id>:role/github-actions-applydf)
 - ECR_REPOSITORY_BACKEND: applydf-backend
 - ECR_REPOSITORY_FRONTEND: applydf-frontend
 
 GitHub repository secrets (Settings -> Secrets and variables -> Actions -> Secrets):
-- AWS_ACCESS_KEY_ID
-- AWS_SECRET_ACCESS_KEY
 - EC2_HOST (public IP or DNS)
 - EC2_USER (example: ubuntu or ec2-user)
 - EC2_SSH_PRIVATE_KEY (private key text for EC2 SSH)
 
-AWS IAM permissions needed for AWS credentials used in workflow:
+OIDC setup (recommended, no static AWS keys in GitHub):
+1. Create an IAM OIDC provider for token.actions.githubusercontent.com (if not already created).
+2. Create IAM role (AWS_DEPLOY_ROLE_ARN) with trust policy allowing your GitHub repo/branch to assume it via OIDC.
+3. Attach ECR permissions listed below to this role.
+
+AWS IAM permissions needed for OIDC role used in workflow:
 - ecr:GetAuthorizationToken
 - ecr:BatchCheckLayerAvailability
 - ecr:CompleteLayerUpload
@@ -47,6 +52,11 @@ How deployment works:
 3. Images are pushed to ECR using commit SHA tags.
 4. Workflow copies deploy files to EC2 and runs deploy/ec2-deploy.sh.
 5. EC2 pulls fresh images and restarts services with Docker Compose.
+
+Infra bootstrap workflow:
+1. Run workflow `AWS Infra Bootstrap` once from GitHub Actions.
+2. It validates variables and creates ECR repositories if missing.
+3. Then use `AWS Deploy ApplyDF` for regular deployments.
 
 Access after deploy:
 - Frontend: http://<EC2_HOST>:8501
