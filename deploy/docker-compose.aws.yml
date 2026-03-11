@@ -1,0 +1,18 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    container_name: applydf-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    container_name: applydf-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_BASE_URL: http://backend:8000
+    ports:
+      - "8501:8501"
