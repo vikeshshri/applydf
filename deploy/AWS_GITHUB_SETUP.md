@@ -3,6 +3,7 @@ AWS deployment pipeline setup (GitHub Actions -> ECR -> EC2)
 Files added:
 - .github/workflows/aws-deploy.yml
 - .github/workflows/aws-infra-bootstrap.yml
+- .github/workflows/aws-infra-init.yml
 - backend/Dockerfile
 - frontend/Dockerfile
 - deploy/docker-compose.aws.yml
@@ -10,19 +11,31 @@ Files added:
 
 GitHub repository variables (Settings -> Secrets and variables -> Actions -> Variables):
 - AWS_REGION: your region (example: ap-south-1)
-- AWS_DEPLOY_ROLE_ARN: IAM Role ARN for GitHub OIDC (example: arn:aws:iam::<account-id>:role/github-actions-applydf)
 - ECR_REPOSITORY_BACKEND: applydf-backend
 - ECR_REPOSITORY_FRONTEND: applydf-frontend
 
 GitHub repository secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+- AWS_ROLE_TO_ASSUME (IAM Role ARN for GitHub OIDC)
 - EC2_HOST (public IP or DNS)
 - EC2_USER (example: ubuntu or ec2-user)
 - EC2_SSH_PRIVATE_KEY (private key text for EC2 SSH)
 
+Optional one-time bootstrap secrets (only for AWS Infra Init workflow):
+- AWS_BOOTSTRAP_ACCESS_KEY_ID
+- AWS_BOOTSTRAP_SECRET_ACCESS_KEY
+
 OIDC setup (recommended, no static AWS keys in GitHub):
 1. Create an IAM OIDC provider for token.actions.githubusercontent.com (if not already created).
-2. Create IAM role (AWS_DEPLOY_ROLE_ARN) with trust policy allowing your GitHub repo/branch to assume it via OIDC.
+2. Create IAM role and store its ARN in secret AWS_ROLE_TO_ASSUME.
+   The role trust policy must allow your GitHub repo/branch to assume it via OIDC.
 3. Attach ECR permissions listed below to this role.
+
+Automated alternative:
+1. Run workflow `AWS Infra Init (One-Time)`.
+2. It can create OIDC provider, IAM role, and ECR repositories automatically.
+3. Copy the output values from workflow summary into GitHub Variables.
+4. Put role ARN into secret AWS_ROLE_TO_ASSUME.
+5. Remove bootstrap secrets after first successful run.
 
 AWS IAM permissions needed for OIDC role used in workflow:
 - ecr:GetAuthorizationToken
