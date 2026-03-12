@@ -8,5 +8,15 @@ resource "aws_ecs_service" "backend" {
   desired_count   = 1
   launch_type     = "FARGATE"
   task_definition = aws_ecs_task_definition.backend.arn
-  # Add network config, etc.
+  network_configuration {
+    subnets         = aws_subnet.public[*].id
+    security_groups = [aws_security_group.ecs.id]
+    assign_public_ip = true
+  }
+}
+
+resource "aws_security_group" "ecs" {
+  name        = "ecs-sg"
+  description = "ECS access"
+  vpc_id      = aws_vpc.main.id
 }
