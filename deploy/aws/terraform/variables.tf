@@ -52,3 +52,8 @@ variable "domain_name" {
   description = "Root domain name"
   type        = string
 }
+
+variable "private_app_subnet_cidrs" {
+  description = "List of private app subnet CIDRs"
+  type        = list(string)
+}
