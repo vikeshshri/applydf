@@ -19,6 +19,7 @@ permissions:
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - name: Configure AWS Credentials (OIDC)
