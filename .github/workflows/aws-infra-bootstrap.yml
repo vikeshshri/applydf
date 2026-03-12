@@ -40,12 +40,12 @@ jobs:
 
       - name: Terraform Plan
         working-directory: deploy/aws/terraform
-        run: terraform plan -input=false -var="aws_region=ap-south-1" -var="ecr_backend_repository=${{ vars.ECR_REPOSITORY_BACKEND }}" -var="ecr_frontend_repository=${{ vars.ECR_REPOSITORY_FRONTEND }}"
+        run: terraform plan -input=false -var="aws_region=ap-south-1" -var="ecr_backend_repository=${{ vars.ECR_REPOSITORY_BACKEND }}" -var="ecr_frontend_repository=${{ vars.ECR_REPOSITORY_FRONTEND }}" -var="ecs_cluster_name=${{ vars.ECS_CLUSTER_NAME }}" -var="ecs_service_name=${{ vars.ECS_SERVICE_NAME }}" -var="vpc_cidr=10.40.0.0/16" -var="public_subnet_cidrs=[\"10.40.1.0/24\", \"10.40.2.0/24\"]" -var="db_name=${{ vars.DB_NAME }}" -var="db_user=${{ secrets.DB_USER }}" -var="db_password=${{ secrets.DB_PASSWORD }}" -var="domain_name=${{ vars.DOMAIN_NAME }}"
 
       - name: Terraform Apply
         if: github.event_name == 'workflow_dispatch'
         working-directory: deploy/aws/terraform
-        run: terraform apply -input=false -auto-approve -var="aws_region=ap-south-1" -var="ecr_backend_repository=${{ vars.ECR_REPOSITORY_BACKEND }}" -var="ecr_frontend_repository=${{ vars.ECR_REPOSITORY_FRONTEND }}"
+        run: terraform apply -input=false -auto-approve -var="aws_region=ap-south-1" -var="ecr_backend_repository=${{ vars.ECR_REPOSITORY_BACKEND }}" -var="ecr_frontend_repository=${{ vars.ECR_REPOSITORY_FRONTEND }}" -var="ecs_cluster_name=${{ vars.ECS_CLUSTER_NAME }}" -var="ecs_service_name=${{ vars.ECS_SERVICE_NAME }}" -var="vpc_cidr=10.40.0.0/16" -var="public_subnet_cidrs=[\"10.40.1.0/24\", \"10.40.2.0/24\"]" -var="db_name=${{ vars.DB_NAME }}" -var="db_user=${{ secrets.DB_USER }}" -var="db_password=${{ secrets.DB_PASSWORD }}" -var="domain_name=${{ vars.DOMAIN_NAME }}"
 
       - name: Print next-step checklist
         shell: bash
