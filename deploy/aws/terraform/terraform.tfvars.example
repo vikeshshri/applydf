@@ -1,0 +1,4 @@
+aws_region = "ap-south-1"
+ecr_backend_repository = "applydf-backend"
+ecr_frontend_repository = "applydf-frontend"
+# Add values for ECS, DB, VPC, etc.
