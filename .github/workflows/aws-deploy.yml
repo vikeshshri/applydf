@@ -75,10 +75,7 @@ jobs:
             --output json)
 
           # Update image in container definitions
-          echo "$TASK_DEF" | jq --arg IMAGE "$IMAGE_URI" \
-            '.containerDefinitions[0].image = $IMAGE | \
-             del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
-            > /tmp/task-def.json
+          echo "$TASK_DEF" | jq --arg IMAGE "$IMAGE_URI" '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' > /tmp/task-def.json
 
           # Register new task definition
           NEW_TASK_ARN=$(aws ecs register-task-definition \
