@@ -7,5 +7,6 @@ resource "aws_ecs_service" "backend" {
   cluster         = aws_ecs_cluster.main.id
   desired_count   = 1
   launch_type     = "FARGATE"
-  # Add task definition, network config, etc.
+  task_definition = aws_ecs_task_definition.backend.arn
+  # Add network config, etc.
 }
