@@ -9,6 +9,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECR_REPOSITORY_BACKEND: ${{ vars.ECR_REPOSITORY_BACKEND }}
   ECR_REPOSITORY_FRONTEND: ${{ vars.ECR_REPOSITORY_FRONTEND }}
+  ECS_TASK_FAMILY: applydf-backend
 
 permissions:
   id-token: write
@@ -69,7 +70,7 @@ jobs:
         run: |
           # Get current task definition
           TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition "${{ vars.ECS_SERVICE_NAME }}" \
+            --task-definition "$ECS_TASK_FAMILY" \
             --query 'taskDefinition' \
             --output json)
 
