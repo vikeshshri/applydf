@@ -12,11 +12,6 @@ on:
           - "true"
           - "false"
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPOSITORY_BACKEND: ${{ vars.ECR_REPOSITORY_BACKEND }}
-  ECR_REPOSITORY_FRONTEND: ${{ vars.ECR_REPOSITORY_FRONTEND }}
-
 permissions:
   id-token: write
   contents: read
@@ -24,6 +19,10 @@ permissions:
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY_BACKEND: ${{ vars.ECR_REPOSITORY_BACKEND }}
+      ECR_REPOSITORY_FRONTEND: ${{ vars.ECR_REPOSITORY_FRONTEND }}
 
     steps:
       - name: Configure AWS Credentials (OIDC)
