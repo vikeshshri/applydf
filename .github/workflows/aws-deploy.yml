@@ -63,33 +63,39 @@ jobs:
           echo "frontend_image=$FRONTEND_IMAGE" >> "$GITHUB_OUTPUT"
           echo "ecr_registry=$ECR_REGISTRY" >> "$GITHUB_OUTPUT"
 
-      - name: Copy deploy files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          source: "deploy/docker-compose.aws.yml,deploy/ec2-deploy.sh"
-          target: "/opt/applydf"
-          strip_components: 1
-
-      - name: Deploy on EC2
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Update ECS task definition and deploy
         env:
-          AWS_REGION: ${{ env.AWS_REGION }}
-          ECR_REGISTRY: ${{ steps.build.outputs.ecr_registry }}
-          BACKEND_IMAGE: ${{ steps.build.outputs.backend_image }}
-          FRONTEND_IMAGE: ${{ steps.build.outputs.frontend_image }}
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          envs: AWS_REGION,ECR_REGISTRY,BACKEND_IMAGE,FRONTEND_IMAGE
-          script: |
-            chmod +x /opt/applydf/deploy/ec2-deploy.sh || true
-            chmod +x /opt/applydf/ec2-deploy.sh || true
-            if [ -f /opt/applydf/ec2-deploy.sh ]; then
-              /opt/applydf/ec2-deploy.sh
-            else
-              /opt/applydf/deploy/ec2-deploy.sh
-            fi
+          IMAGE_URI: ${{ steps.build.outputs.backend_image }}
+        run: |
+          # Get current task definition
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "${{ vars.ECS_SERVICE_NAME }}" \
+            --query 'taskDefinition' \
+            --output json)
+
+          # Update image in container definitions
+          echo "$TASK_DEF" | jq --arg IMAGE "$IMAGE_URI" \
+            '.containerDefinitions[0].image = $IMAGE | \
+             del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            > /tmp/task-def.json
+
+          # Register new task definition
+          NEW_TASK_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          # Update service with new task definition
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --service "${{ vars.ECS_SERVICE_NAME }}" \
+            --task-definition "$NEW_TASK_ARN" \
+            --force-new-deployment
+
+      - name: Wait for ECS deployment stabilization
+        run: |
+          CLUSTER="${{ vars.ECS_CLUSTER_NAME }}"
+          SERVICE="${{ vars.ECS_SERVICE_NAME }}"
+          echo "Waiting for ECS service deployment to stabilize..."
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+          echo "ECS deployment stabilized."
