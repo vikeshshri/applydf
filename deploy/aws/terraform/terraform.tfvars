@@ -1,3 +1,5 @@
+db_user = "applydf_db"
+aws_account_id = "645599467663"
 aws_region = "ap-south-1"
 ecr_backend_repository = "applydf-backend"
 ecr_frontend_repository = "applydf-frontend"
