@@ -3,53 +3,65 @@ name: AWS Infra Bootstrap
 on:
   workflow_dispatch:
     inputs:
-      ensure_ecr:
-        description: "Create ECR repositories if missing"
-        required: true
-        default: "true"
+      action:
+        description: Terraform action
         type: choice
-        options:
-          - "true"
-          - "false"
+        options: [plan, apply]
+        default: plan
+      environment:
+        description: Target environment label
+        type: choice
+        options: [staging, production]
+        default: production
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  bootstrap:
+  terraform:
     runs-on: ubuntu-latest
-    environment: prod
-
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      TF_IN_AUTOMATION: true
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD || secrets.DATABASE_PASSWORD }}
+    defaults:
+      run:
+        working-directory: deploy/aws/terraform
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ap-south-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        working-directory: deploy/aws/terraform
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${TF_VAR_db_password}" ]; then
+            echo "Missing DB password. Set environment secret DB_PASSWORD or DATABASE_PASSWORD."
+            exit 1
+          fi
 
       - name: Terraform Plan
-        working-directory: deploy/aws/terraform
-        run: terraform plan -input=false -var="aws_region=ap-south-1" -var="aws_account_id=${{ vars.AWS_ACCOUNT_ID }}" -var="ecr_backend_repository=${{ vars.ECR_REPOSITORY_BACKEND }}" -var="ecr_frontend_repository=${{ vars.ECR_REPOSITORY_FRONTEND }}" -var="ecs_cluster_name=${{ vars.ECS_CLUSTER_NAME }}" -var="ecs_service_name=${{ vars.ECS_SERVICE_NAME }}" -var="vpc_cidr=10.40.0.0/16" -var="public_subnet_cidrs=[\"10.40.1.0/24\", \"10.40.2.0/24\"]" -var="private_app_subnet_cidrs=[\"10.40.11.0/24\", \"10.40.12.0/24\"]" -var="db_name=${{ vars.DB_NAME }}" -var="db_user=${{ secrets.DB_USER }}" -var="db_password=${{ secrets.DB_PASSWORD }}" -var="domain_name=${{ vars.DOMAIN_NAME }}"
+        run: terraform plan -input=false -lock-timeout=5m -var-file=terraform.tfvars -out=tfplan
 
       - name: Terraform Apply
-        if: github.event_name == 'workflow_dispatch'
-        working-directory: deploy/aws/terraform
-        run: terraform apply -input=false -auto-approve -var="aws_region=ap-south-1" -var="aws_account_id=${{ vars.AWS_ACCOUNT_ID }}" -var="ecr_backend_repository=${{ vars.ECR_REPOSITORY_BACKEND }}" -var="ecr_frontend_repository=${{ vars.ECR_REPOSITORY_FRONTEND }}" -var="ecs_cluster_name=${{ vars.ECS_CLUSTER_NAME }}" -var="ecs_service_name=${{ vars.ECS_SERVICE_NAME }}" -var="vpc_cidr=10.40.0.0/16" -var="public_subnet_cidrs=[\"10.40.1.0/24\", \"10.40.2.0/24\"]" -var="private_app_subnet_cidrs=[\"10.40.11.0/24\", \"10.40.12.0/24\"]" -var="db_name=${{ vars.DB_NAME }}" -var="db_user=${{ secrets.DB_USER }}" -var="db_password=${{ secrets.DB_PASSWORD }}" -var="domain_name=${{ vars.DOMAIN_NAME }}"
-
-      - name: Print next-step checklist
-        shell: bash
-        run: |
-          echo "Infra bootstrap completed."
-          echo "Next: run AWS Deploy ApplyDF workflow (push to main or workflow_dispatch)."
-          echo "Required secrets now only: EC2_HOST, EC2_USER, EC2_SSH_PRIVATE_KEY"
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -input=false -auto-approve tfplan
