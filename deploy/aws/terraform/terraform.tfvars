@@ -1,0 +1,10 @@
+aws_region = "ap-south-1"
+ecr_backend_repository = "applydf-backend"
+ecr_frontend_repository = "applydf-frontend"
+ecs_cluster_name = "applydf_cluster_1"
+ecs_service_name = "applydf_service_1"
+vpc_cidr = "10.40.0.0/16"
+public_subnet_cidrs = ["10.40.1.0/24", "10.40.2.0/24"]
+private_app_subnet_cidrs = ["10.40.11.0/24", "10.40.12.0/24"]
+db_name = "applydf_db_1"
+domain_name = "applydf.com"
