@@ -11,8 +11,8 @@ on:
       environment:
         description: Target environment label
         type: choice
-        options: [staging, production]
-        default: production
+        options: [staging, prod]
+        default: prod
 
 permissions:
   id-token: write
