@@ -9,6 +9,21 @@ resource "aws_lb" "api" {
 
 # CloudFront Distribution for frontend
 resource "aws_cloudfront_distribution" "frontend" {
+    default_cache_behavior {
+      allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "frontend-origin"
+      viewer_protocol_policy = "redirect-to-https"
+      forwarded_values {
+        query_string = false
+        cookies {
+          forward = "none"
+        }
+      }
+      min_ttl     = 0
+      default_ttl = 3600
+      max_ttl     = 86400
+    }
   origin {
     domain_name = "example.com" # Replace with actual S3/static origin
     origin_id   = "frontend-origin"
